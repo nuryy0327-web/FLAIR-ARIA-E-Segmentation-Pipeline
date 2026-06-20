@@ -2,7 +2,8 @@
 
 ## 실행 방법
 
-코랩에서 작성하였습니다. 코랩에서 **[파일] → [노트 열기] → GitHub 탭**에서 해당 깃허브 주소를 입력하시면 됩니다.
+코랩에서 작성하였습니다.
+https://drive.google.com/file/d/12nOorijz5zf3tG0KkphlkHGMOwkrmtAF/view?usp=sharing
 
 기존 데이터 폴더와 첨부된 `checkpoint_classifier.pth`, `checkpoint_edema_classifier.pth`, `checkpoint.pth`을 구글 드라이브에 업로드한 상태에서 그대로 모두 실행하시면 됩니다.
 
