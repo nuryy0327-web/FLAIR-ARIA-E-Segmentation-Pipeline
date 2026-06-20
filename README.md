@@ -12,23 +12,33 @@
 
 > 모델 학습 시간이 오래 걸려 결과만 저장한 채로 주석 처리해놓았습니다. 구글 드라이브에서 저장된 모델을 불러오게 되어있으니 주석 제거 없이 실행하시면 됩니다.
 
-조금 더 시간을 단축하기 위해선, 첨부된 `dicoms_preprocessed`, `results` 폴더도 구글 드라이브에 업로드 후 실행하시면 좋습니다. (업로드하지 않고 실행하면 알아서 새로 폴더를 생성합니다.)
+조금 더 시간을 단축하기 위해선, 첨부된 `flair_volumes`, `dicoms_preprocessed`, `results`,`results_gif` 폴더도 구글 드라이브에 업로드 후 실행하시면 좋습니다. (업로드하지 않고 실행하면 알아서 새로 폴더를 생성합니다.)
 
-https://drive.google.com/drive/folders/1tG9SSYavzfjQ0-b7x612tnhR-548haAO?usp=sharing
-(구글드라이브 링크에 모두 업로드되어있습니다. 공유폴더로 지정하시면 업로드 생략 가능할 것 같습니다.)
+https://drive.google.com/drive/folders/1tG9SSYavzfjQ0-b7x612tnhR-548haAO?usp=sharing  
+(구글드라이브 링크에 모두 업로드되어있습니다. 공유폴더 바로가기를 /content/drive/MyDrive에 두면 업로드 생략 가능할 것 같습니다.)
 
 ### 파이프라인 순서
 
-1. 데이터 탐색
-2. 전처리
-3. Reference mask 생성
-4. 모델 정의 (CNN Classifier / EDEMA Classifier / U-Net)
+1. 데이터 탐색 + 3D FLAIR image volume 구성
+2. 전처리(1단계 모델 방법론)
+3. 학습용 Reference mask 생성
+4. 모델 구성 (CNN Classifier / EDEMA Classifier / U-Net)
 5. 각 모델 학습 또는 checkpoint 로드
 6. Inference (3단계 파이프라인)
-7. 후처리
+7. 3D mask volume 구성 및 후처리
 8. 결과 저장 및 시각화
 
 ---
+## DICOM 데이터 처리 방식
+study별 FLAIR image volume[slice, row, column]을 구성해 사용하였습니다. 
+
+다만 모델링 파트에선 메모리와 데이터 양의 한계를 고려해, 2D 모델로 슬라이스 별 예측을 수행한 뒤 예측 결과를 study 단위의 3D volume [slice, row, column]으로 합산하는 방식을 택했습니다. 
+2D 모델의 경량성과 3D 구조 기반의 후처리를 동시에 적용하고자 했습니다.
+
+2D 모델링을 할 경우 edema의 slice 별 연결을 학습하지 못한다는 단점이 있습니다.  
+하지만 이런 결과로 나타나는 단층 candidate는 predict를 3D로 병합한 이후 진행하는 후처리에서 대부분 걸러질 것으로 생각했습니다.  
+
+실제 업무에서 리소스와 정확한 mask가 제공된 상황이었다면 동일 모델 구조를 3D에 적용하거나, 후처리를 upgrade하여 2D 모델의 경량성을 가져가는 방향을 생각해 볼 것 같습니다.
 
 ## 모델 구조와 학습 방식
 
@@ -148,61 +158,72 @@ Min-max 정규화
 
 중간에 통과하지 못하는 슬라이스들은 mask 없이 종료됩니다.
 
-### 후처리: 1mm² 이하 Candidate 제거
+-2단계 모델에 의해 기존에 edima가 없다고 가정했던 7개 study는 모두 mask 없이 나오는 상황입니다.
+
+### 후처리: 1mm 이하 Candidate 제거
 
 ```
-예측 이진 mask
+예측 이진 mask (슬라이스별 2D)
+        ↓
+study 단위 3D volume으로 합산
+[slice, row, column]
         ↓
 scipy.ndimage.label()
-: 연결된 픽셀 덩어리(connected component)별로 번호 부여
+: 슬라이스 간 연결까지 고려하여 3D connected component별로 번호 부여
         ↓
-각 덩어리 면적 계산
-: component_size(px) × pixel_spacing² → mm² 단위 환산
+각 candidate 정보 계산
+: voxel count, bounding box, 최대 길이(mm)
+  - slice 방향: (bbox 길이) × slice_thickness
+  - row/col 방향: (bbox 길이) × pixel_spacing
         ↓
-1mm² 이하 덩어리 제거
+최대 길이 1mm 이하 candidate 제거
         ↓
-후처리 완료 mask
+후처리 완료 3D mask
+[slice, row, column]
 ```
 
-`pixel_spacing`은 사진별로 픽셀이 의미하는 실제 길이가 다르기 때문에 각자 길이 환산을 해주기 위해 사용했습니다.
+`pixel_spacing`은 사진별로 픽셀이 의미하는 실제 길이가 다르기 때문에 각자 길이 환산을 해주기 위해 사용했습니다.  
+`slice_thickness` 또한 study 별로 간격이 다르기 때문에 호출하였습니다.
 
-<img width="2345" height="593" alt="Image" src="https://github.com/user-attachments/assets/46a21c05-1825-42e9-8f39-5bdcf63949f4" />
-<div align="center"><b>&lt;원본, predict mask, 후처리된 predict mask, 최종 overlay &gt;</b></div>
+---
+## 1mm 이하 Candidate 제외 기준
+
+candidate가 가지는 bounding box의 모서리 길이 중 최댓값을 해당 candidate의 최대 길이라고 가정하였습니다. 
+실제 최대 길이는 오차가 있겠지만, 제품의 시간과 작은 thresh를 생각했을때 이정도로 충분하다고 생각했습니다.
 
 ---
 
-**최종 inference 결과는 다음과 같습니다.**
+
+<img width="2345" height="593" alt="Image" src="https://github.com/user-attachments/assets/e1e38b29-1ae5-48e2-b473-137a2d6a9c13" /> 
+
+<div align="center"><b>&lt;후처리 전,후 predict mask단면&gt;</b></div>  
+
+후처리 이후, 부피가 가장 큰(voxel_count가 가장 높은) candidate를 시각화해보면 다음과 같습니다.  
+
+<img width="1746" height="593" alt="Image" src="https://github.com/user-attachments/assets/38efd85c-680f-4193-ad85-6739464f892a" /> 
+
+<div align="center"><b>&lt;largest candidate를 가장 많이 포함하는 slice&gt;</b></div>
+
+---
+
+**최종 inference 결과(3D mask) overlay를 축 방향 gif로 표현하면 다음과 같습니다.**
 <br>
 (애초에 edima가 없다고 분류하여 학습시킨 7개의 폴더에 대해선 대부분 mask가 생성되지 않았습니다. 즉, 2단계 모델에 의해 최종 result엔 mask가 없는 것이 대부분입니다.)
 
 ---
 
 <br>
-<img width="1746" height="593" alt="Image" src="https://github.com/user-attachments/assets/d67a6dbc-3a61-4ae2-a0eb-190e135068d3" />
-<div align="center"><b>&lt;최종 출력 case 1&gt;</b></div>
+<img width="500" height="500" alt="Image" src="https://github.com/user-attachments/assets/96f15f22-bc73-4cab-a4f0-cf27e45e82b9" />
 
 ---
 
-<img width="2958" height="593" alt="Image" src="https://github.com/user-attachments/assets/00059f13-241d-41f2-95dc-ddac3e733877" />
-<div align="center">원본 &nbsp;|&nbsp; 1% 밝기 &nbsp;|&nbsp; border 제거 후 1% 밝기 (정답지) &nbsp;|&nbsp; predict &nbsp;|&nbsp; 후처리된 최종결과</div>
-<div align="center"><b>&lt;최종 출력 case 2 : 1단계 모델에서 out(유효하지 않은 사진)되어 최종 mask X(제일 오른쪽 사진)&gt;</b></div>
+<br>
+<img width="500" height="500" alt="Image" src="https://github.com/user-attachments/assets/d713bcb7-0f6d-4f79-86f9-89e5f9bc5588" />
 
 ---
 
-<img width="2944" height="593" alt="Image" src="https://github.com/user-attachments/assets/7ce8fbb9-4445-4b8b-8dea-fa2fc7f9762a" />
-<div align="center"><b>&lt;최종 출력 case 3 : 2단계 모델에서 out(edema 영역 없다고 판단)되어 최종 mask X(제일 오른쪽 사진)&gt;</b></div>
-
----
-<img width="2944" height="593" alt="Image" src="https://github.com/user-attachments/assets/aa207b4e-11dd-4717-ae99-64cff538b79d" />
-<div align="center"><b>&lt;최종 출력 case 4 - 모든 단계 pass(유효하며 edema 존재), 후처리 이후 최종 mask(제일 오른쪽 사진)&gt;</b></div>
-
-
-
----
-
-## 1mm 이하 Candidate 제외 기준
-
-공간 상의 edema이기에 실제로는 부피를 기준으로 제외하는 게 맞다고 생각했습니다. 하지만 단면 슬라이스를 보유하고 있으므로 **넓이(면적)** 를 기준으로 제거하였습니다.
+<br>
+<img width="500" height="500" alt="Image" src="https://github.com/user-attachments/assets/505a9730-236a-4523-b090-0d0adbdbc057" />
 
 ---
 
@@ -220,7 +241,7 @@ scipy.ndimage.label()
 ## 구현하면서 둔 가정 및 한계점
 
 - **Reference mask 생성**: 의사 annotation 대신 "border 제거 후 상위 1% 밝기 픽셀 = edema 후보"로 가정했습니다. 또한 Border 제거 시 band_width를 고정값(20px)으로 설정했는데, 해상도가 다른 이미지에서는 적절하지 않을 수 있습니다.
-- **2D slice 단위 처리**: 3D 볼륨 전체가 아닌 슬라이스별 독립 처리로, 슬라이스 간 연속성을 고려하지 못했습니다.
+- **2D 모델링**: 3D 볼륨 전체가 아닌 슬라이스별 독립 처리로, 슬라이스 간 연속성을 고려하지 못했습니다. 하나의 candidate에서 중간부분이 out되면 여러개의 candidate로 판단되는 오류가 발생할 수 있습니다.
 - **입력 크기 통일**: study마다 이미지 크기가 달라 256x256으로 resize하여 학습했습니다. 이 과정에서 정보 손실 가능성이 있습니다.
 - **Edema 레이블**: study 폴더 이름을 기반으로 수동 레이블링을 적용했습니다. `Mod_H`, `Sev_H`는 Hemorrhage만 있는 것으로 해석해 Edema 없음(0)으로 처리했습니다. 이 과정에서 Edema 3개 vs 비Edema 7개 study에서 발생하는 클래스 불균형이 있었고, `pos_weight`로 보정하였습니다.
 - **검증셋 생략**: 데이터가 10개 study로 매우 적어 의미있는 검증셋 분리가 불가능하여 생략하였습니다. 모든 데이터를 학습에 활용하였으며, 이 때문에 2단계 모델은 과적합된 경향을 보이는 것 같습니다.
