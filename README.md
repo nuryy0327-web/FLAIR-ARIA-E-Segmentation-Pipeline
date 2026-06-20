@@ -8,6 +8,8 @@
 
 ## 실행 방법
 
+코랩에서 실행하는것을 추천드립니다.(목차 확인 용이, 시각화가 github에서 잘리는 현상)  
+
 해당 코드 및 기존 데이터 폴더와 첨부된 `checkpoint_classifier.pth`, `checkpoint_edema_classifier.pth`, `checkpoint.pth`을 구글 드라이브에 업로드한 상태에서 그대로 모두 실행하시면 됩니다 (코랩 환경 기준, 파일 저장 경로 : /content/drive/MyDrive).
 
 > 모델 학습 시간이 오래 걸려 결과만 저장한 채로 주석 처리해놓았습니다. 구글 드라이브에서 저장된 모델을 불러오게 되어있으니 주석 제거 없이 실행하시면 됩니다.
