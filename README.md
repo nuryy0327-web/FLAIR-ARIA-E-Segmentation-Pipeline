@@ -200,6 +200,7 @@ candidate가 가지는 bounding box의 모서리 길이 중 최댓값을 해당 
 
 후처리 이후, 부피가 가장 큰(voxel_count가 가장 높은) candidate를 시각화해보면 다음과 같습니다.  
 
+
 <img width="1746" height="593" alt="Image" src="https://github.com/user-attachments/assets/38efd85c-680f-4193-ad85-6739464f892a" /> 
 
 <div align="center"><b>&lt;largest candidate를 가장 많이 포함하는 slice&gt;</b></div>
