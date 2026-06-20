@@ -1,11 +1,11 @@
 # FLAIR 기반 ARIA-E Segmentation Pipeline
 
+코랩에서 작성하였습니다. ipynb 파일 용량이 높아지며 github에 업로드하지 못하는 문제가 있었어서, 전처리 및 파라미터 튜닝을 위한 시각화 과정은 대부분 주석처리 해놓은 상태입니다. 
+모두 돌아가는데 그대로 돌릴 경우 3~4분, 주석을 모두 풀고 돌릴 경우 10분정도 걸립니다.(모델학습 파트 제외)
+
 ## 실행 방법
 
-코랩에서 작성하였습니다. ipynb 파일 용량이 높아 github에 업로드하지 못해, 링크 및 파일로 전해드립니다.
-https://drive.google.com/file/d/12nOorijz5zf3tG0KkphlkHGMOwkrmtAF/view?usp=sharing
-
-기존 데이터 폴더와 첨부된 `checkpoint_classifier.pth`, `checkpoint_edema_classifier.pth`, `checkpoint.pth`을 구글 드라이브에 업로드한 상태에서 그대로 모두 실행하시면 됩니다.
+해당 코드 및 기존 데이터 폴더와 첨부된 `checkpoint_classifier.pth`, `checkpoint_edema_classifier.pth`, `checkpoint.pth`을 구글 드라이브에 업로드한 상태에서 그대로 모두 실행하시면 됩니다 (코랩 환경 기준, 파일 저장 경로 : /content/drive/MyDrive).
 
 > 모델 학습 시간이 오래 걸려 결과만 저장한 채로 주석 처리해놓았습니다. 구글 드라이브에서 저장된 모델을 불러오게 되어있으니 주석 제거 없이 실행하시면 됩니다.
 
@@ -165,7 +165,9 @@ scipy.ndimage.label()
 
 ---
 
-최종 inference 결과는 다음과 같습니다.
+**최종 inference 결과는 다음과 같습니다.**
+<br>
+(애초에 edima가 없다고 분류하여 학습시킨 7개의 폴더에 대해선 대부분 mask가 생성되지 않았습니다. 즉, 2단계 모델에 의해 최종 result엔 mask가 없는 것이 대부분입니다.)
 
 ---
 
