@@ -33,6 +33,7 @@ https://drive.google.com/drive/folders/1tG9SSYavzfjQ0-b7x612tnhR-548haAO?usp=sha
 study별 FLAIR image volume[slice, row, column]을 구성해 사용하였습니다. 
 
 다만 모델링 파트에선 메모리와 데이터 양의 한계를 고려해, 2D 모델로 슬라이스 별 예측을 수행한 뒤 예측 결과를 study 단위의 3D volume [slice, row, column]으로 합산하는 방식을 택했습니다. 
+> 본 과제에서 모델 성능은 상관없지만, 저는 3단계 모델을 거치는 구조를 고안했기에 일단 모델 학습이 되어야 뒷 단계로 넘어갈수 있었습니다. 따라서 실질적으로 주어진 리소스로 3개 모두 학습이 가능한 2D로 시도하였습니다.
 2D 모델의 경량성과 3D 구조 기반의 후처리를 동시에 적용하고자 했습니다.
 
 2D 모델링을 할 경우 edema의 slice 별 연결을 학습하지 못한다는 단점이 있습니다.  
@@ -143,11 +144,13 @@ Min-max 정규화
         ↓
 256x256 Resize (bilinear interpolation)
         ↓
-1단계: CNN Classifier (confidence_thresh=0.4) 
-        ↓ 통과
-2단계: ResNet18 (edema_thresh=0.2)
-        ↓ 통과
-3단계: U-Net 예측 → 확률값 (0~1)
+1단계: CNN Classifier(유효한가?) (confidence_thresh=0.4)
+        ↓ 통과          └─ 미통과 ──────────────────→ mask 없음 (종료)
+        ↓
+2단계: ResNet18(edema가 있는가?) (edema_thresh=0.2)
+        ↓ 통과          └─ 미통과 ──────────────────→ mask 없음 (종료)
+        ↓
+3단계: U-Net 예측(edema가 어디있는가?) → 확률값 (0~1)
         ↓
 원본 크기로 복원 (bilinear interpolation)
         ↓
@@ -156,7 +159,9 @@ Min-max 정규화
 
 > *thresh 선택 기준 : 두 모델 모두 학습 데이터가 적고 신뢰도가 낮아서, 기준을 너무 높게 잡으면 실제 edema가 있는 케이스도 걸러버릴 수 있기에 보수적으로 접근했습니다. 1단계의 경우 비교적 학습이 잘 되어 0.5에서 소폭 하향 했고, 2단계의 경우 클래스 불균형으로 학습이 불안정하기에 일단 3단계로 보내는게 나을것이라 판단해 0.2의 값을 주었습니다.
 
-중간에 통과하지 못하는 슬라이스들은 mask 없이 종료됩니다.
+🔴 중간에 통과하지 못하는 슬라이스들은 mask 없이 종료됩니다.  
+<br>
+<br>
 
 -2단계 모델에 의해 기존에 edima가 없다고 가정했던 7개 study는 모두 mask 없이 나오는 상황입니다.
 
