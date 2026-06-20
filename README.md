@@ -2,7 +2,7 @@
 
 ## 실행 방법
 
-코랩에서 작성하였습니다.
+코랩에서 작성하였습니다. ipynb 파일 용량이 높아 github에 업로드하지 못해, 링크 및 파일로 전해드립니다.
 https://drive.google.com/file/d/12nOorijz5zf3tG0KkphlkHGMOwkrmtAF/view?usp=sharing
 
 기존 데이터 폴더와 첨부된 `checkpoint_classifier.pth`, `checkpoint_edema_classifier.pth`, `checkpoint.pth`을 구글 드라이브에 업로드한 상태에서 그대로 모두 실행하시면 됩니다.
