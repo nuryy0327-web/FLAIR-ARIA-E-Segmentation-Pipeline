@@ -11,6 +11,9 @@
 
 조금 더 시간을 단축하기 위해선, 첨부된 `dicoms_preprocessed`, `results` 폴더도 구글 드라이브에 업로드 후 실행하시면 좋습니다. (업로드하지 않고 실행하면 알아서 새로 폴더를 생성합니다.)
 
+https://drive.google.com/drive/folders/1tG9SSYavzfjQ0-b7x612tnhR-548haAO?usp=drive_link  
+(구글드라이브 링크에 모두 업로드되어있습니다. 공유폴더로 지정하시면 업로드 생략 가능할 것 같습니다.)
+
 ### 파이프라인 순서
 
 1. 데이터 탐색
